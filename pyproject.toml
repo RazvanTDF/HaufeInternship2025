@@ -1,0 +1,13 @@
+[project]
+name = "novareview"
+version = "0.1.0"
+description = "Local AI code reviewer powered by Ollama"
+authors = [{ name = "Hackathon Team" }]
+requires-python = ">=3.10"
+dependencies = [
+    "gitpython>=3.1",
+    "requests>=2.32"
+]
+
+[project.scripts]
+novareview = "novareview.cli:main"
