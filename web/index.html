@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <title>TRR — Tutor, Reviewer & Refactor (Web MVP)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- js-yaml for guidelines YAML -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+
   <!-- highlight.js (core + languages) -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
@@ -58,6 +61,14 @@
         </label>
 
         <label class="flex items-center gap-2 text-sm ml-2">
+          <input id="skipIfShort" type="checkbox" class="w-4 h-4" checked>
+          <span>Skip LLM if &lt;</span>
+          <input id="skipLen" type="number" value="400" min="0"
+                 class="w-20 px-2 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+          <span>chars</span>
+        </label>
+
+        <label class="flex items-center gap-2 text-sm ml-2">
           <input id="useLLM" type="checkbox" class="w-4 h-4">
           <span>Use Local LLM (POST /review)</span>
         </label>
@@ -78,44 +89,44 @@
               <span id="charCount">0</span> chars
             </div>
           </div>
-          <textarea id="code" class="w-full grow min-h-[40vh] font-mono text-sm p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
-            placeholder="Paste code here..."></textarea>
-            <!-- Upload box -->
-<div id="uploadBox"
-     class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
-            bg-white/70 dark:bg-neutral-900/60">
-  <div class="flex items-center justify-between gap-3">
-    <div>
-      <div class="font-medium">OR upload your file</div>
-      <div class="text-neutral-500">Drag & drop aici sau alege un fișier (.py, .js, .ts, .java, .c, .cpp, .txt)</div>
-    </div>
-    <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
-      Choose file
-      <input id="fileInput" type="file" class="hidden" accept=".py,.js,.ts,.java,.c,.cpp,.txt,.md,.json,.yml,.yaml,.html,.css" />
-    </label>
-  </div>
-</div>
-<!-- Guideline upload (symmetric box) -->
-<div id="guidelineBox"
-     class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
-            bg-white/70 dark:bg-neutral-900/60">
-  <div class="flex items-center justify-between gap-3">
-    <div>
-      <div class="font-medium">OR upload your guidelines</div>
-      <div class="text-neutral-500">
-        JSON/YAML with custom rules (lang + pattern + message [+ replacement])
-      </div>
-      <div class="mt-1 text-xs">
-        Loaded rules: <span id="guidelineCount">0</span>
-      </div>
-    </div>
-    <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
-      Choose file
-      <input id="guidelineInput" type="file" class="hidden" accept=".json,.yaml,.yml" />
-    </label>
-  </div>
-</div>
 
+          <textarea id="code" class="w-full grow min-h-[40vh] font-mono text-sm p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
+                    placeholder="Paste code here..."></textarea>
+
+          <!-- Upload code -->
+          <div id="uploadBox"
+               class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
+                      bg-white/70 dark:bg-neutral-900/60">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="font-medium">OR upload your file</div>
+                <div class="text-neutral-500">Drag & drop aici sau alege un fișier (.py, .js, .ts, .java, .c, .cpp, .txt)</div>
+              </div>
+              <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
+                Choose file
+                <input id="fileInput" type="file" class="hidden" accept=".py,.js,.ts,.java,.c,.cpp,.txt,.md,.json,.yml,.yaml,.html,.css" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Upload guidelines -->
+          <div id="guidelineBox"
+               class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
+                      bg-white/70 dark:bg-neutral-900/60">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="font-medium">OR upload your guidelines</div>
+                <div class="text-neutral-500">JSON/YAML (lang + pattern + message [+ replacement], target: suggestion|fix)</div>
+                <div class="mt-1 text-xs">
+                  Loaded rules: <span id="guidelineCount">0</span>
+                </div>
+              </div>
+              <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
+                Choose file
+                <input id="guidelineInput" type="file" class="hidden" accept=".json,.yaml,.yml" />
+              </label>
+            </div>
+          </div>
 
           <details class="mt-3">
             <summary class="cursor-pointer text-sm text-neutral-500">Preview</summary>
@@ -131,7 +142,20 @@
               <span id="fixCount">0</span> fixes · <span id="sugCount">0</span> suggestions
             </div>
           </div>
+
           <div id="summary" class="text-sm text-neutral-600 dark:text-neutral-300 mb-3"></div>
+
+          <!-- Metrics (simple, sigur) -->
+          <div id="metrics" class="mb-4 grid grid-cols-2 gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <div class="p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/30">
+              <div class="font-semibold text-neutral-800 dark:text-neutral-100">LLM Tokens Used</div>
+              <div id="metricTokens" class="text-lg font-mono text-indigo-600 dark:text-indigo-300">—</div>
+            </div>
+            <div class="p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/30">
+              <div class="font-semibold text-neutral-800 dark:text-neutral-100">Estimated Cost</div>
+              <div id="metricCost" class="text-lg font-mono text-emerald-600 dark:text-emerald-300">—</div>
+            </div>
+          </div>
 
           <div class="overflow-auto grow pr-1">
             <h3 class="font-semibold mb-1">Fixes</h3>
@@ -165,73 +189,96 @@
     const guidelineInput = document.getElementById('guidelineInput');
     const guidelineBox   = document.getElementById('guidelineBox');
     const guidelineCount = document.getElementById('guidelineCount');
-    let customGuidelines = []; // array de reguli compilate
+    const skipIfShort = document.getElementById('skipIfShort');
+    const skipLen = document.getElementById('skipLen');
 
-    function parseGuidelinesText(text, ext) {
-  try {
-    if (ext === 'yaml' || ext === 'yml') {
-      if (typeof jsyaml === 'undefined') throw new Error('YAML support missing');
-      return jsyaml.load(text);
+    // Metrics (doar cele două câmpuri, fără alte ID-uri)
+    const metricTokens = document.getElementById('metricTokens');
+    const metricCost   = document.getElementById('metricCost');
+
+    let customGuidelines = [];
+
+    // ===== Helpers: metrics
+    function clearMetrics() {
+      metricTokens.textContent = '—';
+      metricCost.textContent = '—';
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error(e);
-    alert('Could not parse guidelines. Ensure JSON/YAML is valid.');
-    return null;
-  }
-}
+    function estimateTokens(chars) {
+      // fallback safe: ~4 chars/token
+      return Math.max(1, Math.round(chars / 4));
+    }
+    function renderMetricsFromLLM(mx, codeLen) {
+      if (!mx || (mx.prompt_tokens_est == null && mx.response_tokens_est == null)) {
+        // fallback pe lungime cod
+        const t = estimateTokens(codeLen);
+        metricTokens.textContent = String(t);
+        metricCost.textContent = '—';
+        return;
+      }
+      const t = (mx.prompt_tokens_est || 0) + (mx.response_tokens_est || 0);
+      metricTokens.textContent = String(t);
+      const cost = (mx.cost_usd_est != null) ? `$${mx.cost_usd_est}` : '—';
+      metricCost.textContent = cost;
+    }
 
-function normalizeAndCompileGuidelines(raw) {
-  if (!Array.isArray(raw)) {
-    alert('Guidelines must be an array of rule objects.');
-    return [];
-  }
-  const out = [];
-  for (const r of raw) {
-    const lang = (r.lang || 'any').toLowerCase();
-    const pattern = r.pattern;
-    const flags = r.flags || 'g';
-    const message = r.message || 'Guideline match';
-    const target = (r.target || 'suggestion').toLowerCase();
-    const replacement = r.replacement || null;
-
-    if (!pattern) continue;
-    let regex = null;
-    try { regex = new RegExp(pattern, flags); } catch (e) { continue; }
-
-    out.push({ lang, regex, message, target, replacement });
-  }
-  return out;
-}
-
-async function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result || "");
-    fr.onerror = reject;
-    fr.readAsText(file);
-  });
-}
-
-async function loadGuidelinesFromFile(file) {
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  const text = await readFileAsText(file);
-  const data = parseGuidelinesText(text, ext);
-  if (!data) return;
-
-  const compiled = normalizeAndCompileGuidelines(data);
-  customGuidelines = compiled;
-  guidelineCount.textContent = String(customGuidelines.length);
-  alert(`Loaded ${customGuidelines.length} guideline rule(s).`);
-}
-
+    // ===== Helpers: guidelines
+    function parseGuidelinesText(text, ext) {
+      try {
+        if (ext === 'yaml' || ext === 'yml') {
+          if (typeof jsyaml === 'undefined') throw new Error('YAML support missing');
+          return jsyaml.load(text);
+        }
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(e);
+        alert('Could not parse guidelines. Ensure JSON/YAML is valid.');
+        return null;
+      }
+    }
+    function normalizeAndCompileGuidelines(raw) {
+      if (!Array.isArray(raw)) {
+        alert('Guidelines must be an array of rule objects.');
+        return [];
+      }
+      const out = [];
+      for (const r of raw) {
+        const lang = (r.lang || 'any').toLowerCase();
+        const pattern = r.pattern;
+        const flags = r.flags || 'g';
+        const message = r.message || 'Guideline match';
+        const target = (r.target || 'suggestion').toLowerCase();
+        const replacement = r.replacement || null;
+        if (!pattern) continue;
+        let regex = null;
+        try { regex = new RegExp(pattern, flags); } catch { continue; }
+        out.push({ lang, regex, message, target, replacement });
+      }
+      return out;
+    }
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result || "");
+        fr.onerror = reject;
+        fr.readAsText(file);
+      });
+    }
+    async function loadGuidelinesFromFile(file) {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const text = await readFileAsText(file);
+      const data = parseGuidelinesText(text, ext);
+      if (!data) return;
+      customGuidelines = normalizeAndCompileGuidelines(data);
+      guidelineCount.textContent = String(customGuidelines.length);
+      alert(`Loaded ${customGuidelines.length} guideline rule(s).`);
+    }
 
     // ===== Stats
     function updateStats(){ charCount.textContent = ta.value.length; }
     ta.addEventListener('input', () => { updateStats(); highlightPreview(); });
     langSelect.addEventListener('change', ()=> { highlightPreview(); });
 
-    // ===== Language detection (Auto + fallbackuri)
+    // ===== Language detection (Auto + heuristici pentru fragmente scurte)
     function detectLanguage(code) {
       // override manual
       const forced = (langSelect.value || 'auto').toLowerCase();
@@ -240,7 +287,7 @@ async function loadGuidelinesFromFile(file) {
       const src = code || '';
       const trimmed = src.trim();
 
-      // hint inline: "# lang: py", "// lang: js", etc
+      // inline hint: "# lang: py", "// lang: js", etc
       const m = trimmed.match(/^\s*(?:#|\/\/|;|--)\s*lang:\s*([a-z+#]+)\b/i);
       if (m) {
         const v = m[1].toLowerCase();
@@ -248,7 +295,7 @@ async function loadGuidelinesFromFile(file) {
         if (alias[v]) return alias[v];
       }
 
-      // fragmente scurte -> scor pe cuvinte-cheie
+      // fragmente scurte: scor cuvinte-cheie
       if (trimmed.length < 40 || trimmed.split(/\s+/).length < 6) {
         const signals = {
           py:  [/\bdef\b/, /\bprint\(/, /\bclass\b/, /\bexcept\b/, /\bimport\b/],
@@ -270,11 +317,10 @@ async function loadGuidelinesFromFile(file) {
         if (best && best[1] >= 1) return best[0];
       }
 
-      // highlight.js
+      // highlight.js fallback
       try {
         const res = hljs.highlightAuto(src);
         let lang = (res.language || 'text').toLowerCase();
-
         // anti false-positive HTML/CSS -> Python
         if ((lang === 'xml' || lang === 'html' || lang === 'css') &&
             /\b(def |class |import |print\(|except|try:)/.test(src)) {
@@ -320,11 +366,9 @@ async function loadGuidelinesFromFile(file) {
       }
       return { fixes, suggestions };
     }
-
     function analyzePY(code){
       const fixes = [], suggestions = [];
       const lines = code.split(/\r?\n/);
-
       lines.forEach((l,i)=>{ if (/^\s*except\s*:\s*$/.test(l)) fixes.push({ line:i+1, title:"Replace bare `except:` with `except Exception:`", src:"Rule" }); });
       if (code.includes("open(") && !/with\s+open\(.+\)\s+as\s+\w+\s*:/.test(code)) suggestions.push({ line:0, text:"Use `with open(...) as f:` to avoid leaks.", src:"Rule" });
       if (/\brequests\.(get|post|put|delete|patch|head)\(/.test(code) && !/timeout\s*=/.test(code)) suggestions.push({ line:0, text:"Provide a `timeout=` in requests calls.", src:"Rule" });
@@ -335,7 +379,6 @@ async function loadGuidelinesFromFile(file) {
       if (/if\s+\w+\.status_code\s*==\s*200:/.test(code) && /else/.test(code) && !/raise/.test(code)) suggestions.push({ line:0, text:"Consider raising for non-200 responses or returning a structured error.", src:"Rule" });
       return { fixes, suggestions };
     }
-
     function analyzeJAVA(code){
       const fixes = [], suggestions = [];
       const lines = code.split(/\r?\n/);
@@ -361,68 +404,8 @@ async function loadGuidelinesFromFile(file) {
       }
       return { fixes, suggestions };
     }
-    
-    // helper: citește fișier text
-function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result || "");
-    fr.onerror = reject;
-    fr.readAsText(file);
-  });
-}
-
-// aplică conținut în textarea + refresh UI
-async function loadCodeFromFile(file) {
-  const text = await readFileAsText(file);
-  ta.value = text;
-  updateStats();
-  highlightPreview();
-  // după upload, dacă vrei, detectăm limbajul și setăm selectorul
-  const detected = detectLanguage(text);
-  setLangBadge(detected);
-}
-
-// click-upload
-fileInput.addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  try {
-    await loadCodeFromFile(f);
-  } catch {
-    alert("Could not read file as text.");
-  } finally {
-    fileInput.value = "";
-  }
-});
-
-// drag-and-drop
-;['dragenter','dragover'].forEach(ev =>
-  uploadBox.addEventListener(ev, (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    uploadBox.classList.add('ring-2','ring-indigo-400');
-  })
-);
-;['dragleave','drop'].forEach(ev =>
-  uploadBox.addEventListener(ev, (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    uploadBox.classList.remove('ring-2','ring-indigo-400');
-  })
-);
-uploadBox.addEventListener('drop', async (e) => {
-  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (!f) return;
-  try {
-    await loadCodeFromFile(f);
-  } catch {
-    alert("Could not read file as text.");
-  }
-});
     function analyzeC(code){
       const fixes = [], suggestions = [];
-      const lines = code.split(/\r?\n/);
       if (/\bstrcpy\s*\(|\bstrcat\s*\(/.test(code)) {
         suggestions.push({ line:0, text:"Avoid strcpy/strcat; use strncpy/strncat (or safer alternatives).", src:"Rule" });
       }
@@ -441,6 +424,7 @@ uploadBox.addEventListener('drop', async (e) => {
       return { fixes, suggestions };
     }
 
+    // ===== Analyzer dispatcher + guidelines
     function analyze(code, lang){
       const gen = analyzeGeneric(code);
       let spec = { fixes:[], suggestions:[] };
@@ -448,32 +432,30 @@ uploadBox.addEventListener('drop', async (e) => {
       else if (lang === 'py') spec = analyzePY(code);
       else if (lang === 'java') spec = analyzeJAVA(code);
       else if (lang === 'c' || lang === 'cpp') spec = analyzeC(code);
+
       const fixes = [...spec.fixes, ...gen.fixes];
       const suggestions = [...spec.suggestions, ...gen.suggestions];
-      // === custom guidelines
-      try {
-  for (const rule of customGuidelines) {
-    if (!(rule && rule.regex)) continue;
-    if (rule.lang !== 'any' && rule.lang !== lang) continue;
 
-    // dacă se potrivește, adaugă sugestie (sau fix marker)
-    if (rule.regex.test(code)) {
-      if (rule.target === 'fix' && rule.replacement) {
-        fixes.push({ line: null, title: `Guideline fix: ${rule.message}`, src: "Guideline" });
-      } else {
-        suggestions.push({ line: null, text: rule.message, src: "Guideline" });
-      }
-    }
-    // reset regex state pentru /g
-    if (rule.regex.global) rule.regex.lastIndex = 0;
-  }
-} catch (e) {
-  console.error('Guideline evaluation error', e);
-}
+      // guidelines
+      try {
+        for (const rule of customGuidelines) {
+          if (!(rule && rule.regex)) continue;
+          if (rule.lang !== 'any' && rule.lang !== lang) continue;
+          if (rule.regex.test(code)) {
+            if (rule.target === 'fix' && rule.replacement) {
+              fixes.push({ line: null, title: `Guideline fix: ${rule.message}`, src: "Guideline" });
+            } else {
+              suggestions.push({ line: null, text: rule.message, src: "Guideline" });
+            }
+          }
+          if (rule.regex.global) rule.regex.lastIndex = 0;
+        }
+      } catch (e) { console.error('Guideline evaluation error', e); }
 
       return { fixes, suggestions };
     }
 
+    // ===== Merge LLM with base
     function mergeWithLLM(base, llmData){
       const seen = new Set();
       const fixes = [];
@@ -496,6 +478,7 @@ uploadBox.addEventListener('drop', async (e) => {
       return { fixes, suggestions, summary: llmData.summary || "" };
     }
 
+    // ===== Render
     function render({lang, fixes, suggestions, summaryText}){
       fixCount.textContent = fixes.length;
       sugCount.textContent = suggestions.length;
@@ -551,11 +534,10 @@ uploadBox.addEventListener('drop', async (e) => {
       } catch { hl.textContent = code; }
     }
 
-    // ===== Auto-fix rules (labels incluse)
+    // ===== Auto-fix rules
     const autoFixers = {
       py: [
         { regex: /^\s*except\s*:\s*$/gm, replacement: "except Exception:", label: "Replace bare except" },
-        // regex corect (fara paranteza in plus)
         { regex: /print\("(\w+)=["']?\s*"\s*\+\s*str\((.+?)\)\)/g, replacement: 'print(f"$1={$2}")', label: "Concat print -> f-string" }
       ],
       js: [
@@ -579,14 +561,16 @@ uploadBox.addEventListener('drop', async (e) => {
       ]
     };
 
-    // ===== Python auto-fix motor (extins) — returneaza si lista de operatii
+    // Python auto-fix motor (extins) — cu listă de operații
     function toFStringSimple(_, key, expr) { return `print(f"${key}={${expr}}")`; }
     function applyPythonFixes(src) {
       let code = src, applied = 0;
       const ops = [];
 
+      // bare except
       code = code.replace(/^\s*except\s*:\s*$/gm, ()=>{ applied++; ops.push("Replace bare `except:` with `except Exception:`"); return "except Exception:"; });
 
+      // requests.* -> add timeout=10 dacă lipsește
       ["get","post","put","delete","patch","head"].forEach(m=>{
         const re = new RegExp(`\\brequests\\.${m}\\(([^)]*?)\\)`, "g");
         code = code.replace(re, (full, inside)=>{
@@ -597,11 +581,14 @@ uploadBox.addEventListener('drop', async (e) => {
         });
       });
 
+      // json.loads(resp.text) -> resp.json()
       code = code.replace(/\bjson\.loads\(\s*([a-zA-Z_]\w*)\.text\s*\)/g, (_, r)=>{ applied++; ops.push("Use response.json() instead of json.loads(response.text)"); return `${r}.json()`; });
 
+      // print concat -> f-strings
       code = code.replace(/print\(\s*["']([A-Za-z0-9_]+)=["']\s*\+\s*str\((.+?)\)\s*\)/g, (m,k,ex)=>{ applied++; ops.push("Convert print concat to f-string"); return toFStringSimple(m,k,ex); });
       code = code.replace(/print\(\s*["']([^"']*?)["']\s*\+\s*str\((.+?)\)\s*\)/g, (m,prefix,ex)=>{ applied++; ops.push("Convert print concat to f-string"); return `print(f"${prefix}{${ex}}")`; });
 
+      // open/read/close -> with open
       code = code.replace(
         /(^|\n)([ \t]*)f\s*=\s*open\(\s*([^\)]+)\s*\)\s*[\r]?\n\2([A-Za-z_]\w*)\s*=\s*f\.read\(\)\s*[\r]?\n\2f\.close\(\)/g,
         (m, nl, indent, openArgs, varName) => {
@@ -611,6 +598,7 @@ uploadBox.addEventListener('drop', async (e) => {
         }
       );
 
+      // add main guard
       if (/^\s*def\s+main\s*\(/m.test(code) && !/if\s+__name__\s*==\s*["']__main__["']\s*:\s*\n\s*main\(\)/m.test(code)) {
         applied++; ops.push('Add `if __name__ == "__main__": main()` guard');
         code = code.replace(/\s*$/, `
@@ -622,47 +610,36 @@ if __name__ == "__main__":
       return { code, applied, ops };
     }
 
-    // ===== Apply auto-fixes — afiseaza exact ce s-a aplicat
+    // ===== Apply auto-fixes
     btnApplyFixes.addEventListener('click', ()=>{
       const original = ta.value;
       const lang = detectLanguage(original);
       let code = original;
       let applied = 0;
-      const ops = []; // pentru lista de Fixes
+      const ops = [];
 
       if (lang === 'py') {
         const res = applyPythonFixes(code);
         code = res.code; applied += res.applied;
         res.ops.forEach(t => ops.push({ title: `AUTO: ${t}`, src: "AutoFix" }));
       }
-      // apply custom guideline fixes (with replacement)
-for (const rule of customGuidelines) {
-  if (!(rule && rule.regex && rule.replacement)) continue;
-  // aplică DOAR dacă e pentru limbajul curent sau any
-  if (rule.lang !== 'any' && rule.lang !== lang) continue;
-  if (rule.target !== 'fix') continue;
 
-  const before = code;
-  try {
-    code = code.replace(rule.regex, rule.replacement);
-  } catch (e) {
-    console.error('Guideline replace error', e);
-  }
-  if (code !== before) {
-    applied++;
-    ops.push({ title: `AUTO: ${rule.message}`, src: "Guideline" });
-  }
-}
+      // guideline fixes cu replacement
+      for (const rule of customGuidelines) {
+        if (!(rule && rule.regex && rule.replacement)) continue;
+        if (rule.lang !== 'any' && rule.lang !== lang) continue;
+        if (rule.target !== 'fix') continue;
+        const before = code;
+        try { code = code.replace(rule.regex, rule.replacement); } catch {}
+        if (code !== before) { applied++; ops.push({ title: `AUTO: ${rule.message}`, src: "Guideline" }); }
+      }
 
-      // reguli generice (cu label)
+      // reguli generice (per limbaj)
       const rules = autoFixers[lang] || [];
       rules.forEach(rule=>{
         const before = code;
         code = code.replace(rule.regex, rule.replacement);
-        if (code !== before) {
-          applied++;
-          ops.push({ title: `AUTO: ${rule.label || 'Fix'}`, src: "AutoFix" });
-        }
+        if (code !== before) { applied++; ops.push({ title: `AUTO: ${rule.label || 'Fix'}`, src: "AutoFix" }); }
       });
 
       if (applied > 0) {
@@ -670,7 +647,6 @@ for (const rule of customGuidelines) {
         updateStats();
         highlightPreview();
 
-        // re-analiza pentru sugestii ramase (fara LLM aici)
         const base = analyze(code, lang);
         const fixesToShow = [
           ...ops.map(o => ({ title: o.title, line: null, src: o.src })),
@@ -692,13 +668,17 @@ for (const rule of customGuidelines) {
 
       const base = analyze(code, lang);
 
-      if (!useLLM.checked) {
-        render({ lang, fixes: base.fixes, suggestions: base.suggestions, summaryText: `Language: ${lang}. ${base.fixes.length} fixes, ${base.suggestions.length} suggestions.` });
+      // fără LLM
+      if (!useLLM.checked || (skipIfShort.checked && code.length < Number(skipLen.value || 0))) {
+        render({ lang, fixes: base.fixes, suggestions: base.suggestions,
+                 summaryText: `Language: ${lang}. ${base.fixes.length} fixes, ${base.suggestions.length} suggestions.` });
+        clearMetrics();
         highlightPreview();
         return;
       }
 
-      let llmData = { summary: "LLM offline", comments: [] };
+      // cu LLM
+      let llmData = { summary: "LLM offline", comments: [], metrics: null };
       try {
         const resp = await fetch('http://localhost:5143/review', {
           method: 'POST',
@@ -707,48 +687,76 @@ for (const rule of customGuidelines) {
         });
         llmData = await resp.json();
       } catch {
-        llmData = { summary: "LLM offline", comments: [] };
+        // lasă fallback
       }
 
       const merged = mergeWithLLM(base, llmData);
       const summaryText = `Language: ${lang}. ${base.fixes.length} fixes, ${base.suggestions.length} suggestions. | LLM: ${merged.summary || 'ok'}`;
       render({ lang, fixes: merged.fixes, suggestions: merged.suggestions, summaryText });
+
+      // metrics safe
+      renderMetricsFromLLM(llmData.metrics, code.length);
+
       highlightPreview();
     });
-    guidelineInput.addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  try {
-    await loadGuidelinesFromFile(f);
-  } catch {
-    alert("Could not read guideline file.");
-  } finally {
-    guidelineInput.value = "";
-  }
-});
 
-// drag-and-drop pentru guideline box
-;['dragenter','dragover'].forEach(ev =>
-  guidelineBox.addEventListener(ev, (e) => {
-    e.preventDefault(); e.stopPropagation();
-    guidelineBox.classList.add('ring-2','ring-indigo-400');
-  })
-);
-;['dragleave','drop'].forEach(ev =>
-  guidelineBox.addEventListener(ev, (e) => {
-    e.preventDefault(); e.stopPropagation();
-    guidelineBox.classList.remove('ring-2','ring-indigo-400');
-  })
-);
-guidelineBox.addEventListener('drop', async (e) => {
-  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (!f) return;
-  try {
-    await loadGuidelinesFromFile(f);
-  } catch {
-    alert("Could not read guideline file.");
-  }
-});
+    // ===== Upload code (click & DnD)
+    async function loadCodeFromFile(file) {
+      const text = await readFileAsText(file);
+      ta.value = text;
+      updateStats();
+      highlightPreview();
+      const detected = detectLanguage(text);
+      setLangBadge(detected);
+    }
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try { await loadCodeFromFile(f); } catch { alert("Could not read file as text."); }
+      finally { fileInput.value = ""; }
+    });
+    ;['dragenter','dragover'].forEach(ev =>
+      uploadBox.addEventListener(ev, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        uploadBox.classList.add('ring-2','ring-indigo-400');
+      })
+    );
+    ;['dragleave','drop'].forEach(ev =>
+      uploadBox.addEventListener(ev, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        uploadBox.classList.remove('ring-2','ring-indigo-400');
+      })
+    );
+    uploadBox.addEventListener('drop', async (e) => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      try { await loadCodeFromFile(f); } catch { alert("Could not read file as text."); }
+    });
+
+    // ===== Upload guidelines (click & DnD)
+    guidelineInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try { await loadGuidelinesFromFile(f); } catch { alert("Could not read guideline file."); }
+      finally { guidelineInput.value = ""; }
+    });
+    ;['dragenter','dragover'].forEach(ev =>
+      guidelineBox.addEventListener(ev, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        guidelineBox.classList.add('ring-2','ring-indigo-400');
+      })
+    );
+    ;['dragleave','drop'].forEach(ev =>
+      guidelineBox.addEventListener(ev, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        guidelineBox.classList.remove('ring-2','ring-indigo-400');
+      })
+    );
+    guidelineBox.addEventListener('drop', async (e) => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      try { await loadGuidelinesFromFile(f); } catch { alert("Could not read guideline file."); }
+    });
 
     // ===== Utils + init
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }

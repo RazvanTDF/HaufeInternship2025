@@ -1,11 +1,13 @@
 {
   "model": "llama3.2:1b",
-  "max_context_chars": 4000,
+  "max_context_chars": 6000,
   "guidelines": [
     "Security: validate inputs, avoid injections, no eval",
     "Reliability: handle null/None, catch exceptions",
     "Testing: add/adjust tests when behavior changes",
     "Docs: update README or docstrings when behavior changes",
     "Performance: avoid unnecessary loops"
-  ]
+  ],
+  "price_per_mtok_usd": 0.8,
+  "chars_per_token": 4
 }
