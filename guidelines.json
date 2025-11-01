@@ -1,0 +1,25 @@
+[
+  {
+    "lang": "py",
+    "pattern": "==\\s*None",
+    "flags": "g",
+    "message": "Use `is None` instead of `== None`",
+    "target": "fix",
+    "replacement": "is None"
+  },
+  {
+    "lang": "py",
+    "pattern": "!=\\s*None",
+    "flags": "g",
+    "message": "Use `is not None` instead of `!= None`",
+    "target": "fix",
+    "replacement": "is not None"
+  },
+  {
+    "lang": "py",
+    "pattern": "\\bprint\\(",
+    "flags": "g",
+    "message": "Avoid `print` in production logs (consider using `logging`)",
+    "target": "suggestion"
+  }
+]

@@ -5,3 +5,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+echo ".venv/" > .gitignore
+echo "__pycache__/" >> .gitignore
+echo "build/" >> .gitignore
+echo "dist/" >> .gitignore
+echo "*.egg-info/" >> .gitignore

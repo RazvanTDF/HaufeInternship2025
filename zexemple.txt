@@ -1,0 +1,10 @@
+[
+  {
+    "lang": "py",                // "py","js","ts","java","c","cpp","any"
+    "pattern": "\\bprint\\(",    // string regex (fără / /), scăpat corect
+    "flags": "g",                // opțional
+    "message": "Avoid print in prod logs",
+    "target": "suggestion",      // "suggestion" sau "fix"
+    "replacement": ""            // opțional; dacă există și target="fix", îl putem aplica în Auto-fix
+  }
+]

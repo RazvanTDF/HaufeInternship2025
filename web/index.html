@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TRR — Tutor, Reviewer & Refactor (Web MVP)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- highlight.js (core + languages) -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ruby.min.js"></script>
+
+  <style>
+    :root { color-scheme: light dark; }
+    .card { border-radius: 1rem; box-shadow: 0 12px 32px rgba(0,0,0,.10); }
+    .badge { border-radius: 9999px; padding: .25rem .6rem; font-weight: 600; }
+  </style>
+</head>
+<body class="h-screen bg-gradient-to-br from-indigo-50 to-sky-50 dark:from-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
+  <div class="h-full flex flex-col">
+    <!-- Header -->
+    <header class="px-6 pt-5 pb-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">TRR — Tutor, Reviewer & Refactor</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span id="langBadge" class="badge text-sm bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 border border-indigo-300/50">Language: —</span>
+
+        <!-- Language selector -->
+        <label class="flex items-center gap-2 text-sm">
+          <span class="text-neutral-500">Language</span>
+          <select id="langSelect" class="px-2 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <option value="auto" selected>Auto</option>
+            <option value="py">Python</option>
+            <option value="js">JavaScript</option>
+            <option value="ts">TypeScript</option>
+            <option value="java">Java</option>
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+            <option value="go">Go</option>
+            <option value="cs">C#</option>
+            <option value="php">PHP</option>
+            <option value="rb">Ruby</option>
+          </select>
+        </label>
+
+        <label class="flex items-center gap-2 text-sm ml-2">
+          <input id="useLLM" type="checkbox" class="w-4 h-4">
+          <span>Use Local LLM (POST /review)</span>
+        </label>
+
+        <button id="btnApplyFixes" class="px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-sm">Apply auto-fixes</button>
+        <button id="btnAnalyze" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Analyze</button>
+      </div>
+    </header>
+
+    <!-- Main 50/50 -->
+    <main class="grow px-6 pb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+        <!-- Left: Code -->
+        <section class="card h-full bg-white/85 dark:bg-neutral-900/70 p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold">Paste your code</h2>
+            <div class="text-sm text-neutral-500">
+              <span id="charCount">0</span> chars
+            </div>
+          </div>
+          <textarea id="code" class="w-full grow min-h-[40vh] font-mono text-sm p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
+            placeholder="Paste code here..."></textarea>
+            <!-- Upload box -->
+<div id="uploadBox"
+     class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
+            bg-white/70 dark:bg-neutral-900/60">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <div class="font-medium">OR upload your file</div>
+      <div class="text-neutral-500">Drag & drop aici sau alege un fișier (.py, .js, .ts, .java, .c, .cpp, .txt)</div>
+    </div>
+    <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
+      Choose file
+      <input id="fileInput" type="file" class="hidden" accept=".py,.js,.ts,.java,.c,.cpp,.txt,.md,.json,.yml,.yaml,.html,.css" />
+    </label>
+  </div>
+</div>
+<!-- Guideline upload (symmetric box) -->
+<div id="guidelineBox"
+     class="mt-3 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-sm
+            bg-white/70 dark:bg-neutral-900/60">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <div class="font-medium">OR upload your guidelines</div>
+      <div class="text-neutral-500">
+        JSON/YAML with custom rules (lang + pattern + message [+ replacement])
+      </div>
+      <div class="mt-1 text-xs">
+        Loaded rules: <span id="guidelineCount">0</span>
+      </div>
+    </div>
+    <label class="px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 cursor-pointer">
+      Choose file
+      <input id="guidelineInput" type="file" class="hidden" accept=".json,.yaml,.yml" />
+    </label>
+  </div>
+</div>
+
+
+          <details class="mt-3">
+            <summary class="cursor-pointer text-sm text-neutral-500">Preview</summary>
+            <pre class="mt-2 rounded-lg overflow-auto max-h-[30vh]"><code id="hl" class="hljs"></code></pre>
+          </details>
+        </section>
+
+        <!-- Right: Findings -->
+        <section class="card h-full bg-white/85 dark:bg-neutral-900/70 p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold">Findings</h2>
+            <div class="text-sm text-neutral-500">
+              <span id="fixCount">0</span> fixes · <span id="sugCount">0</span> suggestions
+            </div>
+          </div>
+          <div id="summary" class="text-sm text-neutral-600 dark:text-neutral-300 mb-3"></div>
+
+          <div class="overflow-auto grow pr-1">
+            <h3 class="font-semibold mb-1">Fixes</h3>
+            <ul id="fixes" class="space-y-2 mb-4"></ul>
+
+            <h3 class="font-semibold mb-1">Suggestions</h3>
+            <ul id="suggestions" class="space-y-2"></ul>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ===== Elements
+    const ta = document.getElementById('code');
+    const charCount = document.getElementById('charCount');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const btnApplyFixes = document.getElementById('btnApplyFixes');
+    const useLLM = document.getElementById('useLLM');
+    const langBadge = document.getElementById('langBadge');
+    const fixesList = document.getElementById('fixes');
+    const suggestionsList = document.getElementById('suggestions');
+    const fixCount = document.getElementById('fixCount');
+    const sugCount = document.getElementById('sugCount');
+    const summary = document.getElementById('summary');
+    const hl = document.getElementById('hl');
+    const langSelect = document.getElementById('langSelect');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBox = document.getElementById('uploadBox');
+    const guidelineInput = document.getElementById('guidelineInput');
+    const guidelineBox   = document.getElementById('guidelineBox');
+    const guidelineCount = document.getElementById('guidelineCount');
+    let customGuidelines = []; // array de reguli compilate
+
+    function parseGuidelinesText(text, ext) {
+  try {
+    if (ext === 'yaml' || ext === 'yml') {
+      if (typeof jsyaml === 'undefined') throw new Error('YAML support missing');
+      return jsyaml.load(text);
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error(e);
+    alert('Could not parse guidelines. Ensure JSON/YAML is valid.');
+    return null;
+  }
+}
+
+function normalizeAndCompileGuidelines(raw) {
+  if (!Array.isArray(raw)) {
+    alert('Guidelines must be an array of rule objects.');
+    return [];
+  }
+  const out = [];
+  for (const r of raw) {
+    const lang = (r.lang || 'any').toLowerCase();
+    const pattern = r.pattern;
+    const flags = r.flags || 'g';
+    const message = r.message || 'Guideline match';
+    const target = (r.target || 'suggestion').toLowerCase();
+    const replacement = r.replacement || null;
+
+    if (!pattern) continue;
+    let regex = null;
+    try { regex = new RegExp(pattern, flags); } catch (e) { continue; }
+
+    out.push({ lang, regex, message, target, replacement });
+  }
+  return out;
+}
+
+async function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result || "");
+    fr.onerror = reject;
+    fr.readAsText(file);
+  });
+}
+
+async function loadGuidelinesFromFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const text = await readFileAsText(file);
+  const data = parseGuidelinesText(text, ext);
+  if (!data) return;
+
+  const compiled = normalizeAndCompileGuidelines(data);
+  customGuidelines = compiled;
+  guidelineCount.textContent = String(customGuidelines.length);
+  alert(`Loaded ${customGuidelines.length} guideline rule(s).`);
+}
+
+
+    // ===== Stats
+    function updateStats(){ charCount.textContent = ta.value.length; }
+    ta.addEventListener('input', () => { updateStats(); highlightPreview(); });
+    langSelect.addEventListener('change', ()=> { highlightPreview(); });
+
+    // ===== Language detection (Auto + fallbackuri)
+    function detectLanguage(code) {
+      // override manual
+      const forced = (langSelect.value || 'auto').toLowerCase();
+      if (forced !== 'auto') return forced;
+
+      const src = code || '';
+      const trimmed = src.trim();
+
+      // hint inline: "# lang: py", "// lang: js", etc
+      const m = trimmed.match(/^\s*(?:#|\/\/|;|--)\s*lang:\s*([a-z+#]+)\b/i);
+      if (m) {
+        const v = m[1].toLowerCase();
+        const alias = { python:'py', py:'py', js:'js', javascript:'js', ts:'ts', typescript:'ts', java:'java', c:'c', 'c++':'cpp', cpp:'cpp', go:'go', cs:'cs', csharp:'cs', php:'php', rb:'rb', ruby:'rb' };
+        if (alias[v]) return alias[v];
+      }
+
+      // fragmente scurte -> scor pe cuvinte-cheie
+      if (trimmed.length < 40 || trimmed.split(/\s+/).length < 6) {
+        const signals = {
+          py:  [/\bdef\b/, /\bprint\(/, /\bclass\b/, /\bexcept\b/, /\bimport\b/],
+          js:  [/\bfunction\b/, /\bconsole\.log\b/, /\blet\b/, /\bconst\b/, /=>/],
+          ts:  [/\binterface\b/, /\bas\b/, /\b:\s*[\w\[\]<>]+\s*[=,)]/, /\bprivate\b/],
+          java:[/\bpublic\s+(class|static)\b/, /\bSystem\.out\.println\b/, /\bnew\s+\w+\(/],
+          c:   [/#include\s*<\w+>/, /\bprintf\(/, /\bint\s+main\s*\(/],
+          cpp: [/#include\s*<\w+>/, /\bstd::\w+/, /\bcout\s*<</],
+          go:  [/\bpackage\s+\w+/, /\bfunc\s+\w+\(/, /\bfmt\.Print/],
+          cs:  [/\busing\s+\w+;/, /\bConsole\.WriteLine\b/, /\bnamespace\b/],
+          php: [/^<\?php/, /\becho\s+["']/],
+          rb:  [/\bdef\b/, /\bend\b/, /\bputs\b/],
+        };
+        const score = {};
+        for (const k of Object.keys(signals)) {
+          score[k] = signals[k].reduce((acc, re)=> acc + (re.test(trimmed) ? 1 : 0), 0);
+        }
+        const best = Object.entries(score).sort((a,b)=> b[1]-a[1])[0];
+        if (best && best[1] >= 1) return best[0];
+      }
+
+      // highlight.js
+      try {
+        const res = hljs.highlightAuto(src);
+        let lang = (res.language || 'text').toLowerCase();
+
+        // anti false-positive HTML/CSS -> Python
+        if ((lang === 'xml' || lang === 'html' || lang === 'css') &&
+            /\b(def |class |import |print\(|except|try:)/.test(src)) {
+          return 'py';
+        }
+        const aliases = {
+          javascript:'js', typescript:'ts', python:'py', java:'java',
+          c:'c', cpp:'cpp', csharp:'cs', go:'go', php:'php', ruby:'rb'
+        };
+        return aliases[lang] || 'text';
+      } catch { return 'text'; }
+    }
+
+    function setLangBadge(lang){
+      langBadge.textContent = `Language: ${lang}`;
+      langBadge.className = "badge text-sm";
+      const isCode = (['py','js','ts','java','go','cs','c','cpp'].includes(lang));
+      if (isCode) langBadge.className += " bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 border border-emerald-300/40";
+      else langBadge.className += " bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 border border-indigo-300/50";
+    }
+
+    // ===== Generic heuristics
+    function analyzeGeneric(code){
+      const fixes = [];
+      const suggestions = [];
+      const lines = code.split(/\r?\n/);
+      lines.forEach((l,i)=>{ if (l.length > 120) suggestions.push({ line:i+1, text:"Line exceeds 120 chars; consider wrapping.", src:"Rule" }); });
+      lines.forEach((l,i)=>{ if (/TODO|FIXME/.test(l)) suggestions.push({ line:i+1, text:"Resolve TODO/FIXME or create a tracked issue.", src:"Rule" }); });
+      return { fixes, suggestions };
+    }
+
+    // ===== Per-language analyzers
+    function analyzeJS(code){
+      const fixes = [], suggestions = [];
+      const lines = code.split(/\r?\n/);
+      lines.forEach((line,i)=>{
+        if (/^\s*var\s+/.test(line)) fixes.push({ line:i+1, title:"Replace 'var' with 'let'", src:"Rule" });
+        if (/(^|[^=])==([^=]|$)/.test(line)) suggestions.push({ line:i+1, text:"Use strict equality '===' unless coercion is required.", src:"Rule" });
+        if (/\bconsole\.log\(/.test(line)) suggestions.push({ line:i+1, text:"Guard console.log behind a debug flag or remove.", src:"Rule" });
+      });
+      if (/\bawait\b/.test(code) && !/try\s*{[\s\S]*await[\s\S]*}\s*catch/.test(code)) {
+        suggestions.push({ line:0, text:"Wrap awaits in try/catch to handle errors.", src:"Rule" });
+      }
+      return { fixes, suggestions };
+    }
+
+    function analyzePY(code){
+      const fixes = [], suggestions = [];
+      const lines = code.split(/\r?\n/);
+
+      lines.forEach((l,i)=>{ if (/^\s*except\s*:\s*$/.test(l)) fixes.push({ line:i+1, title:"Replace bare `except:` with `except Exception:`", src:"Rule" }); });
+      if (code.includes("open(") && !/with\s+open\(.+\)\s+as\s+\w+\s*:/.test(code)) suggestions.push({ line:0, text:"Use `with open(...) as f:` to avoid leaks.", src:"Rule" });
+      if (/\brequests\.(get|post|put|delete|patch|head)\(/.test(code) && !/timeout\s*=/.test(code)) suggestions.push({ line:0, text:"Provide a `timeout=` in requests calls.", src:"Rule" });
+      if (/\bfor\s+\w+\s+in\s+range\(\s*len\(.+\)\s*\)\s*:/.test(code)) suggestions.push({ line:0, text:"Prefer `for i, item in enumerate(seq):` over `range(len(seq)`.", src:"Rule" });
+      if (/print\(\s*".*"\s*\+\s*/.test(code)) suggestions.push({ line:0, text:"Prefer f-strings over string concatenation.", src:"Rule" });
+      if (/url\s*=\s*["']https?:\/\/[^"']+["']\s*\+\s*\w+/.test(code)) suggestions.push({ line:0, text:"Build URLs with f-strings or urllib.parse; avoid string concatenation.", src:"Rule" });
+      if (/json\.loads\(\s*\w+\.text\s*\)/.test(code)) suggestions.push({ line:0, text:"Use `response.json()` instead of `json.loads(response.text)`.", src:"Rule" });
+      if (/if\s+\w+\.status_code\s*==\s*200:/.test(code) && /else/.test(code) && !/raise/.test(code)) suggestions.push({ line:0, text:"Consider raising for non-200 responses or returning a structured error.", src:"Rule" });
+      return { fixes, suggestions };
+    }
+
+    function analyzeJAVA(code){
+      const fixes = [], suggestions = [];
+      const lines = code.split(/\r?\n/);
+      lines.forEach((l,i)=>{
+        if (/\b\w+\s*==\s*".*?"/.test(l) || /".*?"\s*==\s*\w+/.test(l)) {
+          suggestions.push({ line:i+1, text:"Use .equals(...) for string comparison.", src:"Rule" });
+        }
+      });
+      if (/SELECT\s+.+\+\s*\w+/.test(code) || /WHERE\s+.+\+\s*\w+/.test(code)) {
+        suggestions.push({ line:0, text:"Use PreparedStatement with placeholders; avoid SQL concatenation.", src:"Rule" });
+      }
+      if (/Connection\s+\w+\s*=\s*null|Statement\s+\w+\s*=\s*null|ResultSet\s+\w+\s*=\s*null/.test(code)) {
+        suggestions.push({ line:0, text:"Use try-with-resources for JDBC objects to avoid leaks.", src:"Rule" });
+      }
+      if (/HttpClient\.newHttpClient\(\)/.test(code) && !/connectTimeout|Duration\.of/.test(code)) {
+        suggestions.push({ line:0, text:"Set HttpClient timeouts (connect/read).", src:"Rule" });
+      }
+      if (/https?:\/\/[^\s"]+"\s*\+\s*\w+/.test(code)) {
+        suggestions.push({ line:0, text:"Use URIBuilder/URLEncoder instead of string concatenation for URLs.", src:"Rule" });
+      }
+      if (/catch\s*\(\s*Exception\s+\w+\s*\)\s*\{[^}]*\}/.test(code) && !/log|printStackTrace/.test(code)) {
+        suggestions.push({ line:0, text:"Improve exception handling: log stack trace or rethrow with context.", src:"Rule" });
+      }
+      return { fixes, suggestions };
+    }
+    
+    // helper: citește fișier text
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result || "");
+    fr.onerror = reject;
+    fr.readAsText(file);
+  });
+}
+
+// aplică conținut în textarea + refresh UI
+async function loadCodeFromFile(file) {
+  const text = await readFileAsText(file);
+  ta.value = text;
+  updateStats();
+  highlightPreview();
+  // după upload, dacă vrei, detectăm limbajul și setăm selectorul
+  const detected = detectLanguage(text);
+  setLangBadge(detected);
+}
+
+// click-upload
+fileInput.addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    await loadCodeFromFile(f);
+  } catch {
+    alert("Could not read file as text.");
+  } finally {
+    fileInput.value = "";
+  }
+});
+
+// drag-and-drop
+;['dragenter','dragover'].forEach(ev =>
+  uploadBox.addEventListener(ev, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadBox.classList.add('ring-2','ring-indigo-400');
+  })
+);
+;['dragleave','drop'].forEach(ev =>
+  uploadBox.addEventListener(ev, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadBox.classList.remove('ring-2','ring-indigo-400');
+  })
+);
+uploadBox.addEventListener('drop', async (e) => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  try {
+    await loadCodeFromFile(f);
+  } catch {
+    alert("Could not read file as text.");
+  }
+});
+    function analyzeC(code){
+      const fixes = [], suggestions = [];
+      const lines = code.split(/\r?\n/);
+      if (/\bstrcpy\s*\(|\bstrcat\s*\(/.test(code)) {
+        suggestions.push({ line:0, text:"Avoid strcpy/strcat; use strncpy/strncat (or safer alternatives).", src:"Rule" });
+      }
+      if (/scanf\s*\(\s*"%s"\s*,/.test(code)) {
+        suggestions.push({ line:0, text:'Unsafe scanf("%s"): add width limit like "%15s" or use fgets.', src:"Rule" });
+      }
+      if (/fopen\s*\(/.test(code) && !/fclose\s*\(/.test(code)) {
+        suggestions.push({ line:0, text:"File opened with fopen() is not closed with fclose() (leak).", src:"Rule" });
+      }
+      if (/\bmalloc\s*\(/.test(code) && !/\bfree\s*\(/.test(code)) {
+        suggestions.push({ line:0, text:"Allocation via malloc() is never freed (memory leak).", src:"Rule" });
+      }
+      if (/char\s+\w+\s*\[\s*\d+\s*\]\s*;/.test(code) && /strcpy|memcpy/.test(code)) {
+        suggestions.push({ line:0, text:"Verify destination buffer size vs source length to avoid overflow.", src:"Rule" });
+      }
+      return { fixes, suggestions };
+    }
+
+    function analyze(code, lang){
+      const gen = analyzeGeneric(code);
+      let spec = { fixes:[], suggestions:[] };
+      if (lang === 'js' || lang === 'ts') spec = analyzeJS(code);
+      else if (lang === 'py') spec = analyzePY(code);
+      else if (lang === 'java') spec = analyzeJAVA(code);
+      else if (lang === 'c' || lang === 'cpp') spec = analyzeC(code);
+      const fixes = [...spec.fixes, ...gen.fixes];
+      const suggestions = [...spec.suggestions, ...gen.suggestions];
+      // === custom guidelines
+      try {
+  for (const rule of customGuidelines) {
+    if (!(rule && rule.regex)) continue;
+    if (rule.lang !== 'any' && rule.lang !== lang) continue;
+
+    // dacă se potrivește, adaugă sugestie (sau fix marker)
+    if (rule.regex.test(code)) {
+      if (rule.target === 'fix' && rule.replacement) {
+        fixes.push({ line: null, title: `Guideline fix: ${rule.message}`, src: "Guideline" });
+      } else {
+        suggestions.push({ line: null, text: rule.message, src: "Guideline" });
+      }
+    }
+    // reset regex state pentru /g
+    if (rule.regex.global) rule.regex.lastIndex = 0;
+  }
+} catch (e) {
+  console.error('Guideline evaluation error', e);
+}
+
+      return { fixes, suggestions };
+    }
+
+    function mergeWithLLM(base, llmData){
+      const seen = new Set();
+      const fixes = [];
+      const suggestions = [];
+      function pushUnique(arr, item){
+        const key = (item.title || item.text || item.message || "").toLowerCase().trim();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        arr.push(item);
+      }
+      base.fixes.forEach(f => pushUnique(fixes, f));
+      base.suggestions.forEach(s => pushUnique(suggestions, s));
+      (llmData.comments || []).forEach(c=>{
+        const msg = String(c.message||'').trim();
+        const mLow = msg.toLowerCase();
+        if (!msg) return;
+        if (mLow.includes('str.join') || mLow.includes('validate import') || mLow.includes('zip(items')) return;
+        pushUnique(suggestions, { text: msg, line: (c.lineOffset||0), src:"AI" });
+      });
+      return { fixes, suggestions, summary: llmData.summary || "" };
+    }
+
+    function render({lang, fixes, suggestions, summaryText}){
+      fixCount.textContent = fixes.length;
+      sugCount.textContent = suggestions.length;
+      summary.textContent = summaryText || `Language: ${lang}. ${fixes.length} fixes, ${suggestions.length} suggestions.`;
+
+      fixesList.innerHTML = '';
+      fixes.forEach(f=>{
+        const li = document.createElement('li');
+        li.className = "p-3 rounded-lg border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/20";
+        li.innerHTML = `
+          <div class="text-sm">
+            <span class="font-semibold">Fix:</span> ${escapeHtml(f.title || 'Review')}
+            ${f.line ? `<span class="text-neutral-500">(line ${f.line})</span>` : ''}
+            <span class="ml-2 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">${f.src || 'Rule'}</span>
+          </div>`;
+        fixesList.appendChild(li);
+      });
+
+      suggestionsList.innerHTML = '';
+      suggestions.forEach(s=>{
+        const li = document.createElement('li');
+        li.className = "p-3 rounded-lg border border-neutral-200 dark:border-neutral-800";
+        li.innerHTML = `
+          <div class="text-sm">
+            <span class="font-semibold">Suggestion:</span> ${escapeHtml(s.text || s.message || '')}
+            ${s.line ? `<span class="text-neutral-500">(line ${s.line})</span>` : ''}
+            <span class="ml-2 ${s.src==='AI' ? 'text-indigo-700 dark:text-indigo-300' : 'text-emerald-700 dark:text-emerald-300'} text-xs font-semibold">${s.src || 'Rule'}</span>
+          </div>`;
+        suggestionsList.appendChild(li);
+      });
+    }
+
+    // ===== Preview
+    function highlightPreview(){
+      const code = ta.value;
+      const lang = detectLanguage(code);
+      setLangBadge(lang);
+      try {
+        const mapped = (
+          lang==='js' ? 'javascript' :
+          lang==='ts' ? 'typescript' :
+          lang==='py' ? 'python' :
+          lang==='java' ? 'java' :
+          lang==='c' ? 'c' :
+          lang==='cpp' ? 'cpp' :
+          lang==='go' ? 'go' :
+          lang==='cs' ? 'csharp' :
+          lang==='php' ? 'php' :
+          lang==='rb' ? 'ruby' : 'plaintext'
+        );
+        const res = hljs.highlight(code, { language: mapped });
+        hl.innerHTML = res.value;
+      } catch { hl.textContent = code; }
+    }
+
+    // ===== Auto-fix rules (labels incluse)
+    const autoFixers = {
+      py: [
+        { regex: /^\s*except\s*:\s*$/gm, replacement: "except Exception:", label: "Replace bare except" },
+        // regex corect (fara paranteza in plus)
+        { regex: /print\("(\w+)=["']?\s*"\s*\+\s*str\((.+?)\)\)/g, replacement: 'print(f"$1={$2}")', label: "Concat print -> f-string" }
+      ],
+      js: [
+        { regex: /\bvar\b/g, replacement: "let", label: "var -> let" },
+        { regex: /([^=!])==([^=])/g, replacement: "$1===$2", label: "== -> ===" }
+      ],
+      ts: [
+        { regex: /\bvar\b/g, replacement: "let", label: "var -> let" },
+        { regex: /([^=!])==([^=])/g, replacement: "$1===$2", label: "== -> ===" }
+      ],
+      java: [
+        { regex: /(\w+)\s*==\s*"([^"]*)"/g, replacement: '$1.equals("$2")', label: 'Use ".equals" for strings' }
+      ],
+      c: [
+        { regex: /\bstrcpy\s*\(/g, replacement: "strncpy(", label: "strcpy -> strncpy" },
+        { regex: /scanf\s*\(\s*"%s"/g, replacement: 'scanf("%15s"', label: 'scanf("%s") -> "%15s"' }
+      ],
+      cpp: [
+        { regex: /\bstrcpy\s*\(/g, replacement: "strncpy(", label: "strcpy -> strncpy" },
+        { regex: /scanf\s*\(\s*"%s"/g, replacement: 'scanf("%15s"', label: 'scanf("%s") -> "%15s"' }
+      ]
+    };
+
+    // ===== Python auto-fix motor (extins) — returneaza si lista de operatii
+    function toFStringSimple(_, key, expr) { return `print(f"${key}={${expr}}")`; }
+    function applyPythonFixes(src) {
+      let code = src, applied = 0;
+      const ops = [];
+
+      code = code.replace(/^\s*except\s*:\s*$/gm, ()=>{ applied++; ops.push("Replace bare `except:` with `except Exception:`"); return "except Exception:"; });
+
+      ["get","post","put","delete","patch","head"].forEach(m=>{
+        const re = new RegExp(`\\brequests\\.${m}\\(([^)]*?)\\)`, "g");
+        code = code.replace(re, (full, inside)=>{
+          if (/timeout\s*=/.test(inside)) return full;
+          applied++; ops.push(`Add timeout=10 to requests.${m}()`);
+          const sep = inside.trim() ? inside.trim() + ", " : "";
+          return `requests.${m}(${sep}timeout=10)`;
+        });
+      });
+
+      code = code.replace(/\bjson\.loads\(\s*([a-zA-Z_]\w*)\.text\s*\)/g, (_, r)=>{ applied++; ops.push("Use response.json() instead of json.loads(response.text)"); return `${r}.json()`; });
+
+      code = code.replace(/print\(\s*["']([A-Za-z0-9_]+)=["']\s*\+\s*str\((.+?)\)\s*\)/g, (m,k,ex)=>{ applied++; ops.push("Convert print concat to f-string"); return toFStringSimple(m,k,ex); });
+      code = code.replace(/print\(\s*["']([^"']*?)["']\s*\+\s*str\((.+?)\)\s*\)/g, (m,prefix,ex)=>{ applied++; ops.push("Convert print concat to f-string"); return `print(f"${prefix}{${ex}}")`; });
+
+      code = code.replace(
+        /(^|\n)([ \t]*)f\s*=\s*open\(\s*([^\)]+)\s*\)\s*[\r]?\n\2([A-Za-z_]\w*)\s*=\s*f\.read\(\)\s*[\r]?\n\2f\.close\(\)/g,
+        (m, nl, indent, openArgs, varName) => {
+          applied++; ops.push("Use context manager `with open(...)`");
+          const i = indent || "";
+          return `${nl}${i}with open(${openArgs}) as f:\n${i}    ${varName} = f.read()`;
+        }
+      );
+
+      if (/^\s*def\s+main\s*\(/m.test(code) && !/if\s+__name__\s*==\s*["']__main__["']\s*:\s*\n\s*main\(\)/m.test(code)) {
+        applied++; ops.push('Add `if __name__ == "__main__": main()` guard');
+        code = code.replace(/\s*$/, `
+
+if __name__ == "__main__":
+    main()
+`);
+      }
+      return { code, applied, ops };
+    }
+
+    // ===== Apply auto-fixes — afiseaza exact ce s-a aplicat
+    btnApplyFixes.addEventListener('click', ()=>{
+      const original = ta.value;
+      const lang = detectLanguage(original);
+      let code = original;
+      let applied = 0;
+      const ops = []; // pentru lista de Fixes
+
+      if (lang === 'py') {
+        const res = applyPythonFixes(code);
+        code = res.code; applied += res.applied;
+        res.ops.forEach(t => ops.push({ title: `AUTO: ${t}`, src: "AutoFix" }));
+      }
+      // apply custom guideline fixes (with replacement)
+for (const rule of customGuidelines) {
+  if (!(rule && rule.regex && rule.replacement)) continue;
+  // aplică DOAR dacă e pentru limbajul curent sau any
+  if (rule.lang !== 'any' && rule.lang !== lang) continue;
+  if (rule.target !== 'fix') continue;
+
+  const before = code;
+  try {
+    code = code.replace(rule.regex, rule.replacement);
+  } catch (e) {
+    console.error('Guideline replace error', e);
+  }
+  if (code !== before) {
+    applied++;
+    ops.push({ title: `AUTO: ${rule.message}`, src: "Guideline" });
+  }
+}
+
+      // reguli generice (cu label)
+      const rules = autoFixers[lang] || [];
+      rules.forEach(rule=>{
+        const before = code;
+        code = code.replace(rule.regex, rule.replacement);
+        if (code !== before) {
+          applied++;
+          ops.push({ title: `AUTO: ${rule.label || 'Fix'}`, src: "AutoFix" });
+        }
+      });
+
+      if (applied > 0) {
+        ta.value = code;
+        updateStats();
+        highlightPreview();
+
+        // re-analiza pentru sugestii ramase (fara LLM aici)
+        const base = analyze(code, lang);
+        const fixesToShow = [
+          ...ops.map(o => ({ title: o.title, line: null, src: o.src })),
+          ...base.fixes
+        ];
+        const summaryText = `Language: ${lang}. Applied ${applied} auto-fix${applied>1?'es':''}.`;
+        render({ lang, fixes: fixesToShow, suggestions: base.suggestions, summaryText });
+        alert(`Applied ${applied} auto-fix${applied>1?'es':''} for ${lang}`);
+      } else {
+        alert("No matching issues found to fix automatically.");
+      }
+    });
+
+    // ===== Analyze (heuristici + optional LLM)
+    btnAnalyze.addEventListener('click', async ()=>{
+      const code = ta.value;
+      const lang = detectLanguage(code);
+      setLangBadge(lang);
+
+      const base = analyze(code, lang);
+
+      if (!useLLM.checked) {
+        render({ lang, fixes: base.fixes, suggestions: base.suggestions, summaryText: `Language: ${lang}. ${base.fixes.length} fixes, ${base.suggestions.length} suggestions.` });
+        highlightPreview();
+        return;
+      }
+
+      let llmData = { summary: "LLM offline", comments: [] };
+      try {
+        const resp = await fetch('http://localhost:5143/review', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code, lang, path: 'pasted' })
+        });
+        llmData = await resp.json();
+      } catch {
+        llmData = { summary: "LLM offline", comments: [] };
+      }
+
+      const merged = mergeWithLLM(base, llmData);
+      const summaryText = `Language: ${lang}. ${base.fixes.length} fixes, ${base.suggestions.length} suggestions. | LLM: ${merged.summary || 'ok'}`;
+      render({ lang, fixes: merged.fixes, suggestions: merged.suggestions, summaryText });
+      highlightPreview();
+    });
+    guidelineInput.addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try {
+    await loadGuidelinesFromFile(f);
+  } catch {
+    alert("Could not read guideline file.");
+  } finally {
+    guidelineInput.value = "";
+  }
+});
+
+// drag-and-drop pentru guideline box
+;['dragenter','dragover'].forEach(ev =>
+  guidelineBox.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    guidelineBox.classList.add('ring-2','ring-indigo-400');
+  })
+);
+;['dragleave','drop'].forEach(ev =>
+  guidelineBox.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation();
+    guidelineBox.classList.remove('ring-2','ring-indigo-400');
+  })
+);
+guidelineBox.addEventListener('drop', async (e) => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  try {
+    await loadGuidelinesFromFile(f);
+  } catch {
+    alert("Could not read guideline file.");
+  }
+});
+
+    // ===== Utils + init
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+    updateStats(); setLangBadge('—'); highlightPreview();
+  </script>
+</body>
+</html>

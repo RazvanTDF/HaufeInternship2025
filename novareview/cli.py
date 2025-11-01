@@ -4,4 +4,8 @@ from .reviewer import run_review
 
 def main():
     staged = "--staged" in sys.argv
-    run_review(staged=staged)
+    apply = "--apply" in sys.argv  # optional autofix
+    run_review(staged=staged, apply=apply)
+
+if __name__ == "__main__":
+    main()
